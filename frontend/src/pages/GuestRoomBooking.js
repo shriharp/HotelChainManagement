@@ -15,7 +15,24 @@ const GuestRoomBooking = () => {
     }, []);
 
     const handleBooking = async (roomId) => {
-        // Logic to book a room
+        try {
+            const response = await fetch(`http://localhost:5000/api/book-room`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ roomId }),
+            });
+
+            if (response.ok) {
+                alert('Room booked successfully!');
+                window.location.href = '/guest-dashboard';
+            } else {
+                alert('Failed to book room.');
+            }
+        } catch (err) {
+            alert('Something went wrong. Please try again later.');
+        }
     };
 
     return (

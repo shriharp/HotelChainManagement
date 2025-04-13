@@ -21,22 +21,23 @@ const Login = () => {
             const data = await response.json();
 
             if (response.ok) {
-                // Store token
+                // Assuming backend is returning a token on successful login
                 localStorage.setItem('token', data.token);
 
-                // Redirect based on role
-                if (data.role === 'ADMIN') {
+                if (username.startsWith('guest_')) {
+                    window.location.href = data.isBooked ? '/guest-dashboard' : '/guest/city-selection';
+                } else if (username.startsWith('admin')) {
                     window.location.href = '/admin-dashboard';
-                } else if (data.role === 'STAFF') {
-                    window.location.href = '/branch-staff-dashboard';
                 } else {
-                    window.location.href = '/guest-dashboard';
+                    window.location.href = '/branch-staff-dashboard';
                 }
             } else {
                 setError(data.message || 'Invalid credentials');
+                console.error('Login failed:', data.message); // Log the backend message for debugging
             }
         } catch (err) {
             setError('Something went wrong. Please try again later.');
+            console.error('Error during login:', err); // Log any errors in the request
         }
     };
 

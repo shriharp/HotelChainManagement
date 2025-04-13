@@ -21,9 +21,6 @@ const LoginPage = () => {
             const data = await response.json();
 
             if (response.ok) {
-                // Store token
-                localStorage.setItem('token', data.token);
-
                 // Redirect based on role
                 if (data.role === 'ADMIN') {
                     window.location.href = '/admin-dashboard';

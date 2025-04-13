@@ -7,8 +7,6 @@ const GuestDashboard = () => {
     return (
         <div>
             <h1>Guest Dashboard</h1>
-            <button onClick={() => navigate('/guest/city-selection')}>Select City</button>
-            <button onClick={() => navigate('/guest/room-booking')}>Book a Room</button>
             <button onClick={() => navigate('/guest/restaurant-orders')}>Order Food</button>
             <button onClick={() => navigate('/guest/hotel-facilities')}>Use Hotel Facilities</button>
             <button onClick={() => navigate('/guest/checkout')}>Checkout</button>

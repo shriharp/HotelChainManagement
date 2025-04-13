@@ -9,6 +9,8 @@ const GuestCitySelection = () => {
         if (city) {
             localStorage.setItem('selectedCity', city);
             navigate('/guest/room-booking');
+        } else {
+            alert('Please select a city.');
         }
     };
 

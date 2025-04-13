@@ -1,20 +1,45 @@
 import React, { useState, useEffect } from 'react';
 
 const GuestCheckout = () => {
-    const [bill, setBill] = useState({});
+    const [bill, setBill] = useState({ total: 0, pending: 0 });
 
     useEffect(() => {
         const fetchBill = async () => {
-            const response = await fetch('http://localhost:5000/api/checkout');
-            const data = await response.json();
-            setBill(data);
+            try {
+                const response = await fetch('http://localhost:5000/api/checkout', {
+                    headers: {
+                        Authorization: `Bearer ${localStorage.getItem('token')}`,
+                    },
+                });
+                const data = await response.json();
+                setBill(data);
+            } catch (err) {
+                console.error('Error fetching bill:', err);
+            }
         };
 
         fetchBill();
     }, []);
 
     const handlePayment = async () => {
-        // Logic to pay pending dues
+        try {
+            const response = await fetch('http://localhost:5000/api/pay', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${localStorage.getItem('token')}`,
+                },
+            });
+
+            if (response.ok) {
+                alert('Payment successful!');
+                window.location.href = '/guest-dashboard';
+            } else {
+                alert('Payment failed. Please try again.');
+            }
+        } catch (err) {
+            console.error('Error during payment:', err);
+        }
     };
 
     return (

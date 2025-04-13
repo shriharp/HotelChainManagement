@@ -5,16 +5,41 @@ const GuestRestaurantOrders = () => {
 
     useEffect(() => {
         const fetchMenu = async () => {
-            const response = await fetch('http://localhost:5000/api/menu');
-            const data = await response.json();
-            setMenu(data);
+            try {
+                const response = await fetch('http://localhost:5000/api/menu', {
+                    headers: {
+                        Authorization: `Bearer ${localStorage.getItem('token')}`,
+                    },
+                });
+                const data = await response.json();
+                setMenu(data);
+            } catch (err) {
+                console.error('Error fetching menu:', err);
+            }
         };
 
         fetchMenu();
     }, []);
 
     const handleOrder = async (menuItemId) => {
-        // Logic to place an order
+        try {
+            const response = await fetch('http://localhost:5000/api/order', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${localStorage.getItem('token')}`,
+                },
+                body: JSON.stringify({ menuItemId }),
+            });
+
+            if (response.ok) {
+                alert('Order placed successfully!');
+            } else {
+                alert('Failed to place order.');
+            }
+        } catch (err) {
+            console.error('Error placing order:', err);
+        }
     };
 
     return (
@@ -22,9 +47,9 @@ const GuestRestaurantOrders = () => {
             <h1>Restaurant Menu</h1>
             <ul>
                 {menu.map((item) => (
-                    <li key={item.menu_item_id}>
-                        {item.item_name} - ${item.item_price}
-                        <button onClick={() => handleOrder(item.menu_item_id)}>Order</button>
+                    <li key={item.id}>
+                        {item.name} - ${item.price}
+                        <button onClick={() => handleOrder(item.id)}>Order</button>
                     </li>
                 ))}
             </ul>
