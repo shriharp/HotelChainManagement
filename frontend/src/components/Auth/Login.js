@@ -21,16 +21,8 @@ const Login = () => {
             const data = await response.json();
 
             if (response.ok) {
-                // Assuming backend is returning a token on successful login
                 localStorage.setItem('token', data.token);
-
-                if (username.startsWith('guest_')) {
-                    window.location.href = data.isBooked ? '/guest-dashboard' : '/guest/city-selection';
-                } else if (username.startsWith('admin')) {
-                    window.location.href = '/admin-dashboard';
-                } else {
-                    window.location.href = '/branch-staff-dashboard';
-                }
+                window.location.href = data.redirect;
             } else {
                 setError(data.message || 'Invalid credentials');
                 console.error('Login failed:', data.message); // Log the backend message for debugging

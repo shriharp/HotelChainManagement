@@ -44,8 +44,20 @@ app.post('/api/login', async (req, res) => {
             const isMatch = await bcrypt.compare(password, guest.password);
 
             if (isMatch) {
+                const currentDate = new Date().toISOString().split('T')[0];
+                const bookingResult = await pool.query(
+                    `SELECT * FROM Booking 
+                     WHERE guest_id = $1 AND $2 BETWEEN check_in_date AND check_out_date`,
+                    [guest.guest_id, currentDate]
+                );
+
                 const token = jwt.sign({ id: guest.guest_id, role: 'GUEST' }, SECRET_KEY);
-                return res.json({ token, role: 'GUEST' });
+
+                if (bookingResult.rows.length > 0) {
+                    return res.json({ token, role: 'GUEST', redirect: '/guest-dashboard' });
+                } else {
+                    return res.json({ token, role: 'GUEST', redirect: '/guest/city-selection' });
+                }
             }
         }
 
