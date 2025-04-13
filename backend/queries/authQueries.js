@@ -11,7 +11,8 @@ async function seedUsers() {
             VALUES 
             ('Trident Mumbai', 'Nariman Point, Mumbai', '02212345678'),
             ('Trident Delhi', 'Connaught Place, Delhi', '01187654321'),
-            ('Trident Bangalore', 'MG Road, Bangalore', '08099887766')
+            ('Trident Bangalore', 'MG Road, Bangalore', '08099887766'),
+            ('Trident Hyderabad', 'Jubilee Hills, Hyderabad', '8008802275')
             ON CONFLICT DO NOTHING;
         `);
 
@@ -19,7 +20,7 @@ async function seedUsers() {
         const branches = await pool.query(`SELECT * FROM Branch`);
         const branchMumbai = branches.rows.find(b => b.branch_name === 'Trident Mumbai')?.branch_id;
         const branchDelhi = branches.rows.find(b => b.branch_name === 'Trident Delhi')?.branch_id;
-
+    
         // Hash passwords
         const adminPassword = await bcrypt.hash('adminPass123', 10);
         const staffPassword1 = await bcrypt.hash('staff123', 10);

@@ -4,6 +4,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { pool } = require('./config/db');
 const { seedUsers } = require('./queries/authQueries');
+const { getAvailableRooms } = require('./queries/guestQueries');
 
 const app = express();
 app.use(express.json());
@@ -68,10 +69,22 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
+// API to fetch available rooms
+app.get('/api/available-rooms', async (req, res) => {
+    const { branchId, checkInDate, checkOutDate } = req.query;
+
+    try {
+        const rooms = await getAvailableRooms(branchId, checkInDate, checkOutDate);
+        res.json(rooms);
+    } catch (err) {
+        console.error('Error fetching available rooms:', err);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+});
+
 app.listen(5000, () => {
     console.log('Server is running on port 5000');
 });
-
 
 process.on('SIGTERM', async () => {
   console.log('Shutting down server...');
