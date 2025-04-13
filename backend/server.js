@@ -69,12 +69,16 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-// API to fetch available rooms
+// Updated API to fetch available rooms
 app.get('/api/available-rooms', async (req, res) => {
-    const { branchId, checkInDate, checkOutDate } = req.query;
+    const { branchName, checkInDate, checkOutDate } = req.query;
+
+    if (!branchName || !checkInDate || !checkOutDate) {
+        return res.status(400).json({ message: 'Missing required query parameters.' });
+    }
 
     try {
-        const rooms = await getAvailableRooms(branchId, checkInDate, checkOutDate);
+        const rooms = await getAvailableRooms(branchName, checkInDate, checkOutDate);
         res.json(rooms);
     } catch (err) {
         console.error('Error fetching available rooms:', err);
@@ -84,29 +88,57 @@ app.get('/api/available-rooms', async (req, res) => {
 
 // API to book a room
 app.post('/api/book-room', async (req, res) => {
-    const { roomId } = req.body;
+    const { roomId, checkInDate, checkOutDate } = req.body;
     const token = req.headers.authorization?.split(' ')[1];
+
+    if (!roomId || !checkInDate || !checkOutDate) {
+        console.error('Missing required fields:', { roomId, checkInDate, checkOutDate });
+        return res.status(400).json({ message: 'Missing required fields.' });
+    }
 
     try {
         const decoded = jwt.verify(token, SECRET_KEY);
         const guestId = decoded.id;
 
-        // Check if guestId exists in the Guest table
+        console.log('Decoded Token:', decoded);
+
+        // Check if guest exists
         const guestCheck = await pool.query('SELECT * FROM Guest WHERE guest_id = $1', [guestId]);
         if (guestCheck.rows.length === 0) {
-            return res.status(400).json({ message: 'Invalid guest ID' });
+            console.error('Invalid guest ID:', guestId);
+            return res.status(400).json({ message: 'Invalid guest ID.' });
         }
 
-        const result = await pool.query(
-            `INSERT INTO Booking (room_id, guest_id, booking_status, check_in_date, check_out_date)
-             VALUES ($1, $2, 'RESERVED', CURRENT_DATE, CURRENT_DATE + INTERVAL '1 day') RETURNING *`,
-            [roomId, guestId]
+        // Check if room is available
+        const roomCheck = await pool.query(
+            `SELECT * FROM Room r
+             WHERE r.room_id = $1
+               AND r.room_id NOT IN (
+                   SELECT room_id
+                   FROM Booking
+                   WHERE booking_status IN ('RESERVED', 'CHECKED_IN')
+                     AND ($2 < check_out_date AND $3 > check_in_date)
+               )`,
+            [roomId, checkInDate, checkOutDate]
         );
 
+        if (roomCheck.rows.length === 0) {
+            console.error('Room not available:', { roomId, checkInDate, checkOutDate });
+            return res.status(400).json({ message: 'Room is not available for the selected dates.' });
+        }
+
+        // Book the room
+        const result = await pool.query(
+            `INSERT INTO Booking (room_id, guest_id, booking_status, check_in_date, check_out_date)
+             VALUES ($1, $2, 'RESERVED', $3, $4) RETURNING *`,
+            [roomId, guestId, checkInDate, checkOutDate]
+        );
+
+        console.log('Room booked successfully:', result.rows[0]);
         res.status(201).json(result.rows[0]);
     } catch (err) {
         console.error('Error booking room:', err);
-        res.status(500).json({ message: 'Internal server error' });
+        res.status(500).json({ message: 'Internal server error.' });
     }
 });
 
@@ -120,10 +152,10 @@ process.on('SIGTERM', async () => {
   process.exit(0);
 });
 
-// filepath: /Users/shriharpande/Documents/mit/sem 4/dbms/TridentHotel/backend/server.js
+// Add an API endpoint to fetch branch names
 app.get('/api/branches', async (req, res) => {
     try {
-        const result = await pool.query('SELECT branch_id, branch_name FROM Branch');
+        const result = await pool.query('SELECT branch_name FROM Branch');
         res.json(result.rows);
     } catch (err) {
         console.error('Error fetching branches:', err);

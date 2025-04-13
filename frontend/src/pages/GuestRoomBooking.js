@@ -7,12 +7,12 @@ const GuestRoomBooking = () => {
     useEffect(() => {
         const fetchRooms = async () => {
             const city = localStorage.getItem('selectedCity');
-            const checkInDate = '2025-03-14'; // Replace with actual date input
-            const checkOutDate = '2025-03-15'; // Replace with actual date input
+            const checkInDate = '2025-04-14'; // Replace with actual date input
+            const checkOutDate = '2025-04-15'; // Replace with actual date input
 
             try {
                 const response = await fetch(
-                    `http://localhost:5000/api/available-rooms?branchId=${city}&checkInDate=${checkInDate}&checkOutDate=${checkOutDate}`
+                    `http://localhost:5000/api/available-rooms?branchName=${city}&checkInDate=${checkInDate}&checkOutDate=${checkOutDate}`
                 );
                 const data = await response.json();
                 if (response.ok) {
@@ -30,22 +30,28 @@ const GuestRoomBooking = () => {
     }, []);
 
     const handleBooking = async (roomId) => {
+        const checkInDate = '2025-04-14'; // Replace with actual date input
+        const checkOutDate = '2025-04-15'; // Replace with actual date input
+
         try {
             const response = await fetch(`http://localhost:5000/api/book-room`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    Authorization: `Bearer ${localStorage.getItem('token')}`, // Include JWT token
                 },
-                body: JSON.stringify({ roomId }),
+                body: JSON.stringify({ roomId, checkInDate, checkOutDate }),
             });
 
             if (response.ok) {
                 alert('Room booked successfully!');
                 window.location.href = '/guest-dashboard';
             } else {
-                alert('Failed to book room.');
+                const errorData = await response.json();
+                alert(`Failed to book room: ${errorData.message}`);
             }
         } catch (err) {
+            console.error('Error booking room:', err);
             alert('Something went wrong. Please try again later.');
         }
     };
