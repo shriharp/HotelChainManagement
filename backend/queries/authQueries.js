@@ -7,12 +7,12 @@ async function seedUsers() {
     try {
         // Seed Branches
         await pool.query(`
-            INSERT INTO Branch (branch_name, location, contact_number)
+            INSERT INTO Branch (branch_id, branch_name, location, contact_number)
             VALUES 
-            ('Trident Mumbai', 'Nariman Point, Mumbai', '02212345678'),
-            ('Trident Delhi', 'Connaught Place, Delhi', '01187654321'),
-            ('Trident Bangalore', 'MG Road, Bangalore', '08099887766'),
-            ('Trident Hyderabad', 'Jubilee Hills, Hyderabad', '8008802275')
+            (1, 'Trident Mumbai', 'Nariman Point, Mumbai', '02212345678'),
+            (2, 'Trident Delhi', 'Connaught Place, Delhi', '01187654321'),
+            (3, 'Trident Bangalore', 'MG Road, Bangalore', '08099887766'),
+            (4, 'Trident Hyderabad', 'Jubilee Hills, Hyderabad', '8008802275')
             ON CONFLICT DO NOTHING;
         `);
 

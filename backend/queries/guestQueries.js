@@ -18,21 +18,30 @@ const getGuestBookingsForDate = async (guestId, date) => {
     return result.rows;
 };
 
-const getAvailableRooms = async (location, checkInDate, checkOutDate) => {
-    console.log('Query Parameters:', { location, checkInDate, checkOutDate }); // Log parameters for debugging
+const getAvailableRooms = async (branchName, checkInDate, checkOutDate) => {
+    // Debugging: Log all branches to verify data
+    const branches = await pool.query(`SELECT * FROM Branch`);
+    console.log('Branches in database:', branches.rows);
+
+    console.log('Query Parameters:', { branchName, checkInDate, checkOutDate }); // Log parameters for debugging
     const result = await pool.query(
         `SELECT r.room_id, r.room_number, r.room_type, r.price_per_night, r.capacity
          FROM Room r
          JOIN Branch b ON r.branch_id = b.branch_id
-         WHERE b.location = $1
+         WHERE b.branch_name = $1
            AND r.room_id NOT IN (
-               SELECT b.room_id
-               FROM Booking b
-               WHERE b.booking_status IN ('RESERVED', 'CHECKED_IN')
-                 AND ($2 < b.check_out_date AND $3 > b.check_in_date)
+               SELECT room_id
+               FROM Booking
+               WHERE booking_status IN ('RESERVED', 'CHECKED_IN')
+                 AND ($2 < check_out_date AND $3 > check_in_date)
            )`,
-        [location, checkInDate, checkOutDate]
+        [branchName, checkInDate, checkOutDate]
     );
+
+    // Debugging: Log query results
+    console.log('Available rooms:', result.rows);
+    console.log('Query Parameters:', { branchName, checkInDate, checkOutDate });
+
     return result.rows;
 };
 
