@@ -1,42 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 
 const AdminDashboard = () => {
-    const [statistics, setStatistics] = useState([]);
-    const [error, setError] = useState('');
-
-    useEffect(() => {
-        const fetchStatistics = async () => {
-            try {
-                const response = await fetch('http://localhost:5000/api/branch-statistics', {
-                    headers: {
-                        Authorization: `Bearer ${localStorage.getItem('token')}`,
-                    },
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    setStatistics(data);
-                } else {
-                    setError('Failed to fetch branch statistics.');
-                }
-            } catch (err) {
-                console.error('Error fetching branch statistics:', err);
-                setError('Something went wrong. Please try again later.');
-            }
-        };
-
-        fetchStatistics();
-    }, []);
+    const branches = [
+        { id: 1, name: 'Trident Mumbai', location: 'Nariman Point, Mumbai', contact: '02212345678', totalSales: '₹1,20,00,000', totalRoomsBooked: 1200 },
+        { id: 2, name: 'Trident Delhi', location: 'Connaught Place, Delhi', contact: '01187654321', totalSales: '₹95,00,000', totalRoomsBooked: 950 },
+        { id: 3, name: 'Trident Bangalore', location: 'MG Road, Bangalore', contact: '08099887766', totalSales: '₹1,10,00,000', totalRoomsBooked: 1100 },
+        { id: 4, name: 'Trident Hyderabad', location: 'Jubilee Hills, Hyderabad', contact: '8008802275', totalSales: '₹85,00,000', totalRoomsBooked: 850 },
+    ];
 
     return (
         <div>
             <h1>Admin Dashboard</h1>
-            {error && <p style={{ color: 'red' }}>{error}</p>}
-            <h2>Branch Statistics</h2>
+            <h2>Branch Details</h2>
             <ul>
-                {statistics.map((stat, index) => (
-                    <li key={index}>
-                        {stat.branch_name} - Total Bookings: {stat.total_bookings}, Total Revenue: ₹{stat.total_revenue}
+                {branches.map((branch) => (
+                    <li key={branch.id}>
+                        <strong>{branch.name}</strong><br />
+                        Location: {branch.location}<br />
+                        Contact: {branch.contact}<br />
+                        Total Sales: {branch.totalSales}<br />
+                        Total Rooms Booked: {branch.totalRoomsBooked}
                     </li>
                 ))}
             </ul>

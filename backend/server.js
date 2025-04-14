@@ -118,7 +118,7 @@ app.post('/api/book-room', async (req, res) => {
 
         if (activeBookingCheck.rows.length > 0) {
             console.error('Guest already has an active booking:', activeBookingCheck.rows);
-            return res.status(400).json({ message: 'You already have an active booking.' });
+            return res.status(200).json({ message: 'You already have an active booking.', redirect: '/guest-dashboard' });
         }
 
         console.log('No active bookings found for guest.');
@@ -151,6 +151,15 @@ app.post('/api/book-room', async (req, res) => {
         );
 
         console.log('Room booked successfully:', result.rows[0]);
+
+        // Add a query to update booking status to 'CHECKED_IN' after booking a room
+        await pool.query(
+            `UPDATE Booking
+             SET booking_status = 'CHECKED_IN'
+             WHERE guest_id = $1 AND booking_status = 'RESERVED'`,
+            [guestId]
+        );
+
         res.status(201).json(result.rows[0]);
     } catch (err) {
         console.error('Error booking room:', err);
