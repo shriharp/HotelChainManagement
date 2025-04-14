@@ -21,10 +21,15 @@ const LoginPage = () => {
             const data = await response.json();
 
             if (response.ok) {
+                const { token, role, bookingId } = data; // Assuming bookingId is returned in the response
+                localStorage.setItem('token', token);
+                if (bookingId) {
+                    localStorage.setItem('bookingId', bookingId); // Save bookingId to localStorage
+                }
                 // Redirect based on role
-                if (data.role === 'ADMIN') {
+                if (role === 'ADMIN') {
                     window.location.href = '/admin-dashboard';
-                } else if (data.role === 'STAFF') {
+                } else if (role === 'STAFF') {
                     window.location.href = '/branch-staff-dashboard';
                 } else {
                     window.location.href = '/guest-dashboard';

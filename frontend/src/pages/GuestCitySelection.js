@@ -21,11 +21,14 @@ const GuestCitySelection = () => {
     }, []);
 
     const handleCitySelection = () => {
-        if (city) {
+        const selectedBranch = branches.find(branch => branch.branch_name === city);
+
+        if (selectedBranch) {
             localStorage.setItem('selectedCity', city);
+            localStorage.setItem('selectedBranchId', selectedBranch.branch_id || ''); // Ensure branchId is stored
             navigate('/guest/room-booking');
         } else {
-            alert('Please select a city.');
+            alert('Please select a valid city.');
         }
     };
 

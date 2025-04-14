@@ -44,6 +44,19 @@ const GuestRoomBooking = () => {
             });
 
             if (response.ok) {
+                const bookingData = await response.json();
+                localStorage.setItem('bookingId', bookingData.booking_id); // Save bookingId to localStorage
+
+                // Update booking status to 'CHECKED_IN'
+                await fetch(`http://localhost:5000/api/update-booking-status`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${localStorage.getItem('token')}`,
+                    },
+                    body: JSON.stringify({ bookingId: bookingData.booking_id }),
+                });
+
                 alert('Room booked successfully!');
                 window.location.href = '/guest-dashboard';
             } else {
