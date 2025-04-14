@@ -13,6 +13,8 @@ const GuestCheckout = () => {
                 return;
             }
 
+            console.log('Attempting to fetch bill from /api/checkout');
+
             try {
                 const response = await fetch('http://localhost:5000/api/checkout', {
                     headers: {
