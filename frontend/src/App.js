@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import Login from './components/Auth/Login';
 import GuestCitySelection from './pages/GuestCitySelection';
 import GuestRoomBooking from './pages/GuestRoomBooking';
@@ -19,17 +19,18 @@ import StatisticsPage from './pages/StatisticsPage';
 import GuestDashboard from './pages/GuestDashboard';
 
 const App = () => {
+    const role = localStorage.getItem('role');
+
     return (
         <Router>
             <Routes>
-                <Route path="/" element={<Login />} />
+                <Route path="/admin-dashboard" element={<AdminDashboard />} />
+                <Route path="/branch-staff-dashboard" element={<BranchStaffDashboard />} />
                 <Route path="/guest/city-selection" element={<GuestCitySelection />} />
                 <Route path="/guest/room-booking" element={<GuestRoomBooking />} />
                 <Route path="/guest/restaurant-orders" element={<GuestRestaurantOrders />} />
                 <Route path="/guest/hotel-facilities" element={<GuestHotelFacilities />} />
                 <Route path="/guest/checkout" element={<GuestCheckout />} />
-                <Route path="/branch-staff-dashboard" element={<BranchStaffDashboard />} />
-                <Route path="/admin-dashboard" element={<AdminDashboard />} />
                 <Route path="/city-selection" element={<CitySelectionPage />} />
                 <Route path="/room-booking" element={<RoomBookingPage />} />
                 <Route path="/restaurant-orders" element={<RestaurantOrdersPage />} />
@@ -39,6 +40,19 @@ const App = () => {
                 <Route path="/branch-selection" element={<BranchSelectionPage />} />
                 <Route path="/statistics" element={<StatisticsPage />} />
                 <Route path="/guest-dashboard" element={<GuestDashboard />} />
+                <Route path="/login" element={<Login />} />
+                <Route
+                    path="/"
+                    element={
+                        role === 'ADMIN' ? (
+                            <Navigate to="/admin-dashboard" />
+                        ) : role === 'STAFF' ? (
+                            <Navigate to="/branch-staff-dashboard" />
+                        ) : (
+                            <Navigate to="/login" />
+                        )
+                    }
+                />
             </Routes>
         </Router>
     );

@@ -5,6 +5,8 @@ const jwt = require('jsonwebtoken');
 const { pool } = require('./config/db');
 const { seedUsers } = require('./queries/authQueries');
 const { getAvailableRooms } = require('./queries/guestQueries');
+const { getBranchGuests, bookGuest } = require('./queries/staffQueries');
+const { getBranchStatistics } = require('./queries/adminQueries');
 
 const app = express();
 app.use(express.json());
@@ -20,45 +22,35 @@ app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
 
     try {
+        // Check if the user is a staff member
         const staffResult = await pool.query(
-            'SELECT * FROM Staff WHERE username = $1',
-            [username]
+            'SELECT * FROM Staff WHERE username = $1 AND password = $2',
+            [username, password]
         );
 
         if (staffResult.rows.length > 0) {
             const staff = staffResult.rows[0];
-            const isMatch = await bcrypt.compare(password, staff.password);
+            const token = jwt.sign({ id: staff.staff_id, role: staff.role, branchId: staff.branch_id }, SECRET_KEY);
 
-            if (isMatch) {
-                const token = jwt.sign({ id: staff.staff_id, role: staff.role }, SECRET_KEY);
-                return res.json({ token, role: staff.role });
+            if (staff.role === 'ADMIN') {
+                return res.json({ token, role: 'ADMIN', redirect: '/admin-dashboard' });
+            } else if (staff.role === 'STAFF') {
+                return res.json({ token, role: 'STAFF', redirect: '/branch-staff-dashboard' });
             }
         }
 
-        const guestResult = await pool.query(
-            'SELECT * FROM Guest WHERE username = $1',
-            [username]
-        );
+        // Check if the user is a guest
+        const guestResult = await pool.query('SELECT * FROM Guest WHERE username = $1', [username]);
 
         if (guestResult.rows.length > 0) {
             const guest = guestResult.rows[0];
-            const isMatch = await bcrypt.compare(password, guest.password);
+            const isPasswordValid = await bcrypt.compare(password, guest.password);
 
-            if (isMatch) {
-                const currentDate = new Date().toISOString().split('T')[0];
-                const bookingResult = await pool.query(
-                    `SELECT * FROM Booking 
-                     WHERE guest_id = $1 AND $2 BETWEEN check_in_date AND check_out_date`,
-                    [guest.guest_id, currentDate]
-                );
-
+            if (isPasswordValid) {
                 const token = jwt.sign({ id: guest.guest_id, role: 'GUEST' }, SECRET_KEY);
-
-                if (bookingResult.rows.length > 0) {
-                    return res.json({ token, role: 'GUEST', redirect: '/guest-dashboard' });
-                } else {
-                    return res.json({ token, role: 'GUEST', redirect: '/guest/city-selection' });
-                }
+                return res.json({ token, role: 'GUEST', redirect: '/guest-dashboard' });
+            } else {
+                return res.status(401).json({ message: 'Invalid username or password' });
             }
         }
 
@@ -86,14 +78,21 @@ app.get('/api/available-rooms', async (req, res) => {
     }
 });
 
-// API to book a room
+// Add detailed logs to trace the request flow
 app.post('/api/book-room', async (req, res) => {
     const { roomId, checkInDate, checkOutDate } = req.body;
     const token = req.headers.authorization?.split(' ')[1];
 
+    console.log('Received booking request:', { roomId, checkInDate, checkOutDate });
+
     if (!roomId || !checkInDate || !checkOutDate) {
         console.error('Missing required fields:', { roomId, checkInDate, checkOutDate });
         return res.status(400).json({ message: 'Missing required fields.' });
+    }
+
+    if (!token) {
+        console.error('Authorization token is missing.');
+        return res.status(401).json({ message: 'Unauthorized access.' });
     }
 
     try {
@@ -108,6 +107,21 @@ app.post('/api/book-room', async (req, res) => {
             console.error('Invalid guest ID:', guestId);
             return res.status(400).json({ message: 'Invalid guest ID.' });
         }
+
+        console.log('Guest exists:', guestCheck.rows[0]);
+
+        // Check if the guest already has an active booking
+        const activeBookingCheck = await pool.query(
+            `SELECT * FROM Booking WHERE guest_id = $1 AND booking_status IN ('RESERVED', 'CHECKED_IN')`,
+            [guestId]
+        );
+
+        if (activeBookingCheck.rows.length > 0) {
+            console.error('Guest already has an active booking:', activeBookingCheck.rows);
+            return res.status(400).json({ message: 'You already have an active booking.' });
+        }
+
+        console.log('No active bookings found for guest.');
 
         // Check if room is available
         const roomCheck = await pool.query(
@@ -126,6 +140,8 @@ app.post('/api/book-room', async (req, res) => {
             console.error('Room not available:', { roomId, checkInDate, checkOutDate });
             return res.status(400).json({ message: 'Room is not available for the selected dates.' });
         }
+
+        console.log('Room is available:', roomCheck.rows[0]);
 
         // Book the room
         const result = await pool.query(
@@ -168,29 +184,20 @@ app.get('/api/menu', async (req, res) => {
 
 // API to place a restaurant order
 app.post('/api/order', async (req, res) => {
-    const { menuItemId, quantity = 1 } = req.body;
+    const { items } = req.body; // Expecting an array of items
     const token = req.headers.authorization?.split(' ')[1];
 
-    if (!menuItemId || quantity <= 0) {
-        return res.status(400).json({ message: 'Invalid menu item or quantity.' });
+    if (!token) {
+        return res.status(401).json({ message: 'Unauthorized access.' });
+    }
+
+    if (!items || !Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ message: 'Invalid or empty order items.' });
     }
 
     try {
         const decoded = jwt.verify(token, SECRET_KEY);
         const guestId = decoded.id;
-
-        // Fetch menu item details
-        const menuItemResult = await pool.query(
-            'SELECT * FROM MenuItem WHERE menu_item_id = $1',
-            [menuItemId]
-        );
-
-        if (menuItemResult.rows.length === 0) {
-            return res.status(404).json({ message: 'Menu item not found.' });
-        }
-
-        const menuItem = menuItemResult.rows[0];
-        const totalCost = menuItem.item_price * quantity;
 
         // Fetch guest's branch
         const branchResult = await pool.query(
@@ -207,6 +214,22 @@ app.post('/api/order', async (req, res) => {
 
         const branchId = branchResult.rows[0].branch_id;
 
+        // Calculate total cost of the order
+        let totalCost = 0;
+        for (const item of items) {
+            const menuItemResult = await pool.query(
+                'SELECT * FROM MenuItem WHERE menu_item_id = $1',
+                [item.menu_item_id]
+            );
+
+            if (menuItemResult.rows.length === 0) {
+                return res.status(404).json({ message: `Menu item with ID ${item.menu_item_id} not found.` });
+            }
+
+            const menuItem = menuItemResult.rows[0];
+            totalCost += menuItem.item_price * (item.quantity || 1);
+        }
+
         // Create a new restaurant order
         const orderResult = await pool.query(
             `INSERT INTO RestaurantOrder (guest_id, branch_id, total_cost)
@@ -217,11 +240,21 @@ app.post('/api/order', async (req, res) => {
         const orderId = orderResult.rows[0].order_id;
 
         // Add order details
-        await pool.query(
-            `INSERT INTO RestaurantOrderDetail (order_id, menu_item_id, quantity, item_price, line_total)
-             VALUES ($1, $2, $3, $4, $5)`,
-            [orderId, menuItemId, quantity, menuItem.item_price, totalCost]
-        );
+        for (const item of items) {
+            const menuItemResult = await pool.query(
+                'SELECT * FROM MenuItem WHERE menu_item_id = $1',
+                [item.menu_item_id]
+            );
+
+            const menuItem = menuItemResult.rows[0];
+            const lineTotal = menuItem.item_price * (item.quantity || 1);
+
+            await pool.query(
+                `INSERT INTO RestaurantOrderDetail (order_id, menu_item_id, quantity, item_price, line_total)
+                 VALUES ($1, $2, $3, $4, $5)`,
+                [orderId, item.menu_item_id, item.quantity || 1, menuItem.item_price, lineTotal]
+            );
+        }
 
         res.status(201).json({ message: 'Order placed successfully.', orderId });
     } catch (err) {
@@ -311,7 +344,7 @@ app.get('/api/facilities', async (req, res) => {
     }
 });
 
-// API to calculate total bill for checkout
+// Add detailed logs to debug the `/api/checkout` endpoint
 app.get('/api/checkout', async (req, res) => {
     const token = req.headers.authorization?.split(' ')[1];
 
@@ -421,6 +454,117 @@ app.post('/api/update-booking-status', async (req, res) => {
         res.status(200).json({ message: 'Booking status updated to CHECKED_IN.' });
     } catch (err) {
         console.error('Error updating booking status:', err);
+        res.status(500).json({ message: 'Internal server error.' });
+    }
+});
+
+// API to handle payment
+app.post('/api/pay', async (req, res) => {
+    const token = req.headers.authorization?.split(' ')[1];
+
+    if (!token) {
+        console.error('Payment failed: No token provided.');
+        return res.status(401).json({ message: 'Unauthorized access.' });
+    }
+
+    try {
+        const decoded = jwt.verify(token, SECRET_KEY);
+        const guestId = decoded.id;
+
+        console.log('Decoded token:', decoded);
+
+        // Fetch the active booking for the guest
+        const bookingResult = await pool.query(
+            `SELECT booking_id FROM Booking 
+             WHERE guest_id = $1 AND booking_status = 'CHECKED_IN'`,
+            [guestId]
+        );
+
+        if (bookingResult.rows.length === 0) {
+            console.error('Payment failed: No active booking found for guest ID:', guestId);
+            return res.status(404).json({ message: 'No active booking found for the guest.' });
+        }
+
+        const bookingId = bookingResult.rows[0].booking_id;
+        console.log('Active booking ID:', bookingId);
+
+        // Mark the booking as 'PAID'
+        const updateResult = await pool.query(
+            `UPDATE Booking 
+             SET booking_status = 'PAID' 
+             WHERE booking_id = $1`,
+            [bookingId]
+        );
+
+        console.log('Booking update result:', updateResult);
+
+        res.status(200).json({ message: 'Payment successful. Booking marked as PAID.' });
+    } catch (err) {
+        console.error('Error during payment:', err);
+        res.status(500).json({ message: 'Internal server error.' });
+    }
+});
+
+// API for branch staff to fetch guests currently staying at their branch
+app.get('/api/branch-guests', async (req, res) => {
+    const token = req.headers.authorization?.split(' ')[1];
+
+    if (!token) {
+        return res.status(401).json({ message: 'Unauthorized access.' });
+    }
+
+    try {
+        const decoded = jwt.verify(token, SECRET_KEY);
+        const branchId = decoded.branchId;
+
+        const guests = await getBranchGuests(branchId);
+        res.json(guests);
+    } catch (err) {
+        console.error('Error fetching branch guests:', err);
+        res.status(500).json({ message: 'Internal server error.' });
+    }
+});
+
+// API for branch staff to book a guest into a room
+app.post('/api/book-guest', async (req, res) => {
+    const { guestId, roomId, checkInDate, checkOutDate } = req.body;
+    const token = req.headers.authorization?.split(' ')[1];
+
+    if (!token) {
+        return res.status(401).json({ message: 'Unauthorized access.' });
+    }
+
+    try {
+        const decoded = jwt.verify(token, SECRET_KEY);
+        const staffId = decoded.id;
+
+        const booking = await bookGuest(guestId, roomId, checkInDate, checkOutDate, staffId);
+        res.status(201).json(booking);
+    } catch (err) {
+        console.error('Error booking guest:', err);
+        res.status(500).json({ message: 'Internal server error.' });
+    }
+});
+
+// API for admin to fetch branch statistics
+app.get('/api/branch-statistics', async (req, res) => {
+    const token = req.headers.authorization?.split(' ')[1];
+
+    if (!token) {
+        return res.status(401).json({ message: 'Unauthorized access.' });
+    }
+
+    try {
+        const decoded = jwt.verify(token, SECRET_KEY);
+
+        if (decoded.role !== 'ADMIN') {
+            return res.status(403).json({ message: 'Forbidden: Admin access required.' });
+        }
+
+        const statistics = await getBranchStatistics();
+        res.json(statistics);
+    } catch (err) {
+        console.error('Error fetching branch statistics:', err);
         res.status(500).json({ message: 'Internal server error.' });
     }
 });

@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 
 const GuestRestaurantOrders = () => {
     const [menu, setMenu] = useState([]); // Initialize as an empty array
+    const [cart, setCart] = useState([]); // Cart to store selected items
+    const [totalPrice, setTotalPrice] = useState(0); // Total price of items in the cart
     const [error, setError] = useState('');
 
     useEffect(() => {
@@ -37,7 +39,12 @@ const GuestRestaurantOrders = () => {
         fetchMenu();
     }, []);
 
-    const handleOrder = async (menuItemId) => {
+    const addToCart = (menuItem) => {
+        setCart((prevCart) => [...prevCart, menuItem]);
+        setTotalPrice((prevTotal) => prevTotal + parseFloat(menuItem.item_price)); // Update total price
+    };
+
+    const placeOrder = async () => {
         try {
             const response = await fetch('http://localhost:5000/api/order', {
                 method: 'POST',
@@ -45,11 +52,13 @@ const GuestRestaurantOrders = () => {
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${localStorage.getItem('token')}`,
                 },
-                body: JSON.stringify({ menuItemId }),
+                body: JSON.stringify({ items: cart }),
             });
 
             if (response.ok) {
                 alert('Order placed successfully!');
+                setCart([]); // Clear the cart after successful order
+                setTotalPrice(0); // Reset total price
             } else {
                 alert('Failed to place order.');
             }
@@ -67,14 +76,34 @@ const GuestRestaurantOrders = () => {
                 {menu.length > 0 ? (
                     menu.map((item) => (
                         <li key={item.menu_item_id}>
-                            {item.item_name} - ${item.item_price}
-                            <button onClick={() => handleOrder(item.menu_item_id)}>Order</button>
+                            {item.item_name} - ₹{item.item_price}
+                            <button onClick={() => addToCart(item)}>Add to Cart</button>
                         </li>
                     ))
                 ) : (
                     <p>No menu items available.</p>
                 )}
             </ul>
+
+            <h2>Cart</h2>
+            <ul>
+                {cart.length > 0 ? (
+                    cart.map((item, index) => (
+                        <li key={index}>
+                            {item.item_name} - ₹{item.item_price}
+                        </li>
+                    ))
+                ) : (
+                    <p>Your cart is empty.</p>
+                )}
+            </ul>
+
+            {cart.length > 0 && (
+                <div>
+                    <p>Total Price: ₹{totalPrice.toFixed(2)}</p>
+                    <button onClick={placeOrder}>Place Order</button>
+                </div>
+            )}
         </div>
     );
 };

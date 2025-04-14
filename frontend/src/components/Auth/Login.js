@@ -22,7 +22,19 @@ const Login = () => {
 
             if (response.ok) {
                 localStorage.setItem('token', data.token);
-                window.location.href = data.redirect;
+
+                if (data.role === 'GUEST') {
+                    const bookingId = data.bookingId; // Assuming bookingId is returned in the response
+
+                    if (bookingId) {
+                        localStorage.setItem('bookingId', bookingId);
+                        window.location.href = '/guest-dashboard';
+                    } else {
+                        window.location.href = '/guest/city-selection';
+                    }
+                } else {
+                    window.location.href = data.redirect;
+                }
             } else {
                 setError(data.message || 'Invalid credentials');
                 console.error('Login failed:', data.message); // Log the backend message for debugging

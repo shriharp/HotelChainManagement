@@ -47,16 +47,6 @@ const GuestRoomBooking = () => {
                 const bookingData = await response.json();
                 localStorage.setItem('bookingId', bookingData.booking_id); // Save bookingId to localStorage
 
-                // Update booking status to 'CHECKED_IN'
-                await fetch(`http://localhost:5000/api/update-booking-status`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        Authorization: `Bearer ${localStorage.getItem('token')}`,
-                    },
-                    body: JSON.stringify({ bookingId: bookingData.booking_id }),
-                });
-
                 alert('Room booked successfully!');
                 window.location.href = '/guest-dashboard';
             } else {
@@ -77,7 +67,7 @@ const GuestRoomBooking = () => {
                 {rooms.length > 0 ? (
                     rooms.map((room) => (
                         <li key={room.room_id}>
-                            {room.room_number} - {room.room_type} - ${room.price_per_night}
+                            {room.room_number} - {room.room_type} - ₹{room.price_per_night}
                             <button onClick={() => handleBooking(room.room_id)}>Book</button>
                         </li>
                     ))

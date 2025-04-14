@@ -75,7 +75,7 @@ const GuestHotelFacilities = () => {
                 {facilities.length > 0 ? (
                     facilities.map((facility) => (
                         <li key={facility.facility_id}>
-                            {facility.facility_name} - ${facility.usage_fee}
+                            {facility.facility_name} - ₹{facility.usage_fee}
                             <button onClick={() => handleUseFacility(facility.facility_id)}>Use</button>
                         </li>
                     ))

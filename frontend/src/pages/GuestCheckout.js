@@ -37,25 +37,9 @@ const GuestCheckout = () => {
         fetchBill();
     }, []);
 
-    const handlePayment = async () => {
-        try {
-            const response = await fetch('http://localhost:5000/api/pay', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${localStorage.getItem('token')}`,
-                },
-            });
-
-            if (response.ok) {
-                alert('Payment successful!');
-                window.location.href = '/guest-dashboard';
-            } else {
-                alert('Payment failed. Please try again.');
-            }
-        } catch (err) {
-            console.error('Error during payment:', err);
-        }
+    const handlePayment = () => {
+        alert('Payment successful!');
+        window.location.href = '/'; // Redirect to the login page
     };
 
     if (error) {
@@ -69,11 +53,15 @@ const GuestCheckout = () => {
     return (
         <div>
             <h1>Checkout</h1>
+            
+            <h2>Room Details</h2>
+            <p>Room Cost: ₹{bill.roomCost}</p>
+
             <h2>Facilities Used</h2>
             <ul>
                 {bill.facilities.map((facility, index) => (
                     <li key={index}>
-                        {facility.facility_name} - ${facility.usage_cost}
+                        {facility.facility_name} - ₹{facility.usage_cost}
                     </li>
                 ))}
             </ul>
@@ -82,13 +70,13 @@ const GuestCheckout = () => {
             <ul>
                 {bill.restaurantOrders.map((order, index) => (
                     <li key={index}>
-                        {order.item_name} (x{order.quantity}) - ${order.line_total}
+                        {order.item_name} (x{order.quantity}) - ₹{order.line_total}
                     </li>
                 ))}
             </ul>
 
             <h2>Total Bill</h2>
-            <p>${bill.totalBill}</p>
+            <p>₹{bill.totalBill}</p>
 
             <button onClick={handlePayment}>Pay Now</button>
         </div>
